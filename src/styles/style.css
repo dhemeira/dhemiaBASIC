@@ -1,0 +1,23 @@
+@import 'base.css';
+
+li::marker {
+  color: gray;
+}
+
+li {
+  font-size: 1.125em;
+}
+
+li:nth-child(even) {
+  background-color: hsl(0, 0%, 17%);
+}
+
+ol {
+  min-width: 70vw;
+}
+
+#output-wrapper {
+  border: gray 1px solid;
+  padding: 1em;
+  border-radius: 1em;
+}
