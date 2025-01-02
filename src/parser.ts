@@ -1,18 +1,20 @@
 import { Lexer } from './lexer';
 import { Token } from './token';
+import { Emitter } from './emitter';
 import { TokenType } from './tokenType';
-import { print } from './utils';
 
 export class Parser {
   lexer: Lexer;
+  emitter: Emitter;
   curToken: Token;
   peekToken: Token;
   symbols: Set<string>;
   labelsDeclared: Set<string>;
   labelsGotoed: Set<string>;
 
-  constructor(lexer: Lexer) {
+  constructor(lexer: Lexer, emitter: Emitter) {
     this.lexer = lexer;
+    this.emitter = emitter;
 
     this.symbols = new Set();
     this.labelsDeclared = new Set();
@@ -49,7 +51,12 @@ export class Parser {
   }
 
   public program() {
-    print('PROGRAM');
+    this.emitter.headerLine('package main');
+    this.emitter.headerLine('');
+    this.emitter.headerLine('import "fmt"');
+    this.emitter.headerLine('');
+    this.emitter.headerLine('func main() {');
+    this.emitter.tab();
 
     while (this.checkToken(TokenType.NEWLINE)) {
       this.nextToken();
@@ -58,6 +65,9 @@ export class Parser {
     while (!this.checkToken(TokenType.EOF)) {
       this.statement();
     }
+
+    this.emitter.untab();
+    this.emitter.emitLineTabbed('}');
 
     for (let label of this.labelsGotoed) {
       if (!this.labelsDeclared.has(label)) {
@@ -68,69 +78,85 @@ export class Parser {
 
   private statement() {
     if (this.checkToken(TokenType.PRINT)) {
-      print('STATEMENT-PRINT');
       this.nextToken();
 
-      if (this.checkToken(TokenType.STRING)) this.nextToken();
-      else this.expr();
+      if (this.checkToken(TokenType.STRING)) {
+        this.emitter.emitLineTabbed(`fmt.Println("${this.curToken.value}")`);
+        this.nextToken();
+      } else {
+        this.emitter.emitTabbed('fmt.Println(');
+        this.expr();
+        this.emitter.emitLine(')');
+      }
     } else if (this.checkToken(TokenType.IF)) {
-      print('STATEMENT-IF');
       this.nextToken();
+      this.emitter.emitTabbed('if ');
       this.comparison();
 
       this.match(TokenType.THEN);
       this.nl();
+      this.emitter.emitLine('{');
+      this.emitter.tab();
 
       while (!this.checkToken(TokenType.ENDIF)) this.statement();
 
       this.match(TokenType.ENDIF);
+      this.emitter.untab();
+      this.emitter.emitLineTabbed('}');
     } else if (this.checkToken(TokenType.WHILE)) {
-      print('STATEMENT-WHILE');
       this.nextToken();
+      this.emitter.emitTabbed('for ');
       this.comparison();
 
       this.match(TokenType.REPEAT);
       this.nl();
+      this.emitter.emitLine(' {');
+      this.emitter.tab();
 
       while (!this.checkToken(TokenType.ENDWHILE)) this.statement();
 
       this.match(TokenType.ENDWHILE);
+      this.emitter.untab();
+      this.emitter.emitLineTabbed('}');
     } else if (this.checkToken(TokenType.LABEL)) {
-      print('STATEMENT-LABEL');
-
       this.nextToken();
 
       if (this.labelsDeclared.has(this.curToken.value))
         this.abort(`Label ${this.curToken.value} already exists`);
       this.labelsDeclared.add(this.curToken.value);
 
+      this.emitter.emitLineTabbed(`${this.curToken.value}:`);
       this.match(TokenType.IDENT);
     } else if (this.checkToken(TokenType.GOTO)) {
-      print('STATEMENT-GOTO');
-
       this.nextToken();
 
       this.labelsGotoed.add(this.curToken.value);
 
+      this.emitter.emitLineTabbed(`goto ${this.curToken.value}`);
       this.match(TokenType.IDENT);
-    } else if (this.checkToken(TokenType.LET)) {
-      print('STATEMENT-LET');
-
+    } else if (this.checkToken(TokenType.VAR)) {
       this.nextToken();
 
-      if (!this.symbols.has(this.curToken.value)) this.symbols.add(this.curToken.value);
+      if (!this.symbols.has(this.curToken.value)) {
+        this.symbols.add(this.curToken.value);
+        this.emitter.defLine(`var ${this.curToken.value} float64`);
+      }
 
+      this.emitter.emitTabbed(`${this.curToken.value} = `);
       this.match(TokenType.IDENT);
       this.match(TokenType.EQ);
 
       this.expr();
+      this.emitter.emitLine('');
     } else if (this.checkToken(TokenType.INPUT)) {
-      print('STATEMENT-INPUT');
-
       this.nextToken();
 
-      if (!this.symbols.has(this.curToken.value)) this.symbols.add(this.curToken.value);
+      if (!this.symbols.has(this.curToken.value)) {
+        this.symbols.add(this.curToken.value);
+        this.emitter.defLine(`var ${this.curToken.value} float64`);
+      }
 
+      this.emitter.emitLineTabbed(`fmt.Scan(&${this.curToken.value})`);
       this.match(TokenType.IDENT);
     } else {
       this.abort(`Invalid statement at ${this.curToken.value} (${TokenType[this.curToken.type]})`);
@@ -140,10 +166,10 @@ export class Parser {
   }
 
   private comparison() {
-    print('COMPARISON');
-
     this.expr();
+
     if (this.isComparisonOperator()) {
+      this.emitter.emit(` ${this.curToken.value} `);
       this.nextToken();
       this.expr();
     } else {
@@ -151,6 +177,7 @@ export class Parser {
     }
 
     while (this.isComparisonOperator()) {
+      this.emitter.emit(this.curToken.value);
       this.nextToken();
       this.expr();
     }
@@ -168,40 +195,40 @@ export class Parser {
   }
 
   private expr() {
-    print('EXPR');
-
     this.term();
     while (this.checkToken(TokenType.PLUS) || this.checkToken(TokenType.MINUS)) {
+      this.emitter.emit(` ${this.curToken.value} `);
       this.nextToken();
       this.term();
     }
   }
 
   private term() {
-    print('TERM');
-
     this.unary();
     while (this.checkToken(TokenType.ASTERISK) || this.checkToken(TokenType.SLASH)) {
+      this.emitter.emit(` ${this.curToken.value} `);
       this.nextToken();
       this.unary();
     }
   }
 
   private unary() {
-    print('UNARY');
-
-    if (this.checkToken(TokenType.PLUS) || this.checkToken(TokenType.MINUS)) this.nextToken();
+    if (this.checkToken(TokenType.PLUS) || this.checkToken(TokenType.MINUS)) {
+      this.emitter.emit(`${this.curToken.value}`);
+      this.nextToken();
+    }
     this.primary();
   }
 
   private primary() {
-    print(`PRIMARY (${this.curToken.value})`);
-
     if (this.checkToken(TokenType.NUMBER)) {
+      this.emitter.emit(this.curToken.value);
       this.nextToken();
     } else if (this.checkToken(TokenType.IDENT)) {
       if (!this.symbols.has(this.curToken.value))
         this.abort(`Referencing variable before assignment: ${this.curToken.value}`);
+
+      this.emitter.emit(this.curToken.value);
       this.nextToken();
     } else {
       this.abort(`Unexpected token at ${this.curToken.value}`);
@@ -209,10 +236,9 @@ export class Parser {
   }
 
   private nl() {
-    print('NEWLINE');
-
     this.match(TokenType.NEWLINE);
     while (this.checkToken(TokenType.NEWLINE)) {
+      this.emitter.emitLine('');
       this.nextToken();
     }
   }

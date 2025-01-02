@@ -1,11 +1,14 @@
 import './styles/style.css';
 import { Lexer } from './lexer';
 import { Parser } from './parser';
+import { Emitter } from './emitter';
 import { clearOutput, print } from './utils';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
     <h1>dhemiaBASIC</h1>
+    <label for="file-name">Output file name:</label>
+    <input id="file-name" type="text" placeholder="out.go" value="out.go" />
     <input id="source-file" type="file" accept=".dhba" />
     <button id="run">Run</button>
     <div id="output-wrapper">
@@ -38,10 +41,17 @@ document.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () 
 });
 
 function run(source: string) {
+  print('dhemiaBasic Compiler');
   const lexer = new Lexer(source);
-  const parser = new Parser(lexer);
+  let filename = (document.getElementById('file-name') as HTMLInputElement).value;
+  if (!filename) filename = 'out.go';
+  else if (!filename.endsWith('.go')) filename += '.go';
+
+  const emitter = new Emitter(filename);
+  const parser = new Parser(lexer, emitter);
 
   parser.program();
-  print('Parsed successfully');
+  emitter.writeFile();
+  print('Compiling completed.');
 }
 

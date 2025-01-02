@@ -10,7 +10,7 @@ export enum TokenType {
   GOTO = 102,
   PRINT = 103,
   INPUT = 104,
-  LET = 105,
+  VAR = 105,
   IF = 106,
   THEN = 107,
   ENDIF = 108,
