@@ -9,7 +9,7 @@ export class Token {
     this.value = value;
   }
 
-  public static checkIfKeyword(token: string) {
+  public static checkIfKeyword(token: string): string | null {
     for (let nameOfType in TokenType) {
       if (isNaN(Number(nameOfType))) {
         let valueOfType = TokenType[nameOfType as keyof typeof TokenType];

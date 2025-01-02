@@ -25,7 +25,7 @@ export class Lexer {
   }
 
   // Return the lookahead character.
-  private peek() {
+  private peek(): string {
     if (this.curPos + 1 >= this.source.length) {
       return '\0';
     }
@@ -55,10 +55,10 @@ export class Lexer {
   }
 
   // Return the next token.
-  public getToken() {
+  public getToken(): Token {
     this.skipWhitespace();
     this.skipComment();
-    let token: Token | null = null;
+    let token: Token = new Token(TokenType.NONE, '');
 
     switch (this.curChar) {
       case '+':

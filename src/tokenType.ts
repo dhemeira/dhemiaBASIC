@@ -1,4 +1,5 @@
 export enum TokenType {
+  NONE = -101,
   EOF = -1,
   NEWLINE = 0,
   NUMBER = 1,

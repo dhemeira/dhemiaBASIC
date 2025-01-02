@@ -5,6 +5,12 @@ export function print(message: string) {
   else console.log(message);
 }
 
+export function clearOutput() {
+  const output = document.getElementById('output');
+
+  if (output) output.innerHTML = '';
+}
+
 export function isDigit(c: string) {
   return /[0-9]/.test(c);
 }
