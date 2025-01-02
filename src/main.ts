@@ -1,10 +1,11 @@
 import './styles/style.css';
-import { Lexer, TokenType } from './lexer';
+import { Lexer } from './lexer';
+import { TokenType } from './tokenType';
 import { print } from './utils';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
-    <h1>dhemia</h1>
+    <h1>dhemiaBASIC</h1>
     <div id="output-wrapper">
       <ol id="output"></ol>
     </div>
@@ -18,13 +19,13 @@ try {
 }
 
 function main() {
-  const source = 'if+-123 foo*then/';
+  const source = 'if+-123 foo*then/ //comment here\n "if" 3.14 "123"';
 
   const lexer = new Lexer(source);
 
   let token = lexer.getToken();
   while (token?.type !== TokenType.EOF) {
-    if (token?.type === TokenType.STRING) print(`${TokenType[token!.type]}: ${token.value}`);
+    if (token?.type === TokenType.STRING) print(`${TokenType[token!.type]}: "${token.value}"`);
     else if (token?.type === TokenType.NUMBER) print(`${TokenType[token!.type]}: ${token.value}`);
     else print(TokenType[token!.type]);
 
